@@ -25,12 +25,11 @@ def get_video_id(url):
 
 def get_transcript(video_id):
     try:
-        # Initialize the API
-        ytt_api = YouTubeTranscriptApi()
+        # ✅ CORRECT: Pass the cookie path during initialization
+        ytt_api = YouTubeTranscriptApi(cookie_path='youtube.com_cookies.txt')
         
-        # Point to the secret file created on Render
-        # On Render, it will be in the root directory
-        transcript_list = ytt_api.list(video_id, cookies='youtube.com_cookies.txt')
+        # Now list() will automatically use those cookies
+        transcript_list = ytt_api.list(video_id)
         
         try:
             transcript = transcript_list.find_transcript(['en', 'hi'])
