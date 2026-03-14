@@ -2,6 +2,7 @@ import streamlit as st
 import os
 import re
 from dotenv import load_dotenv
+import requests
 
 # --- 2026 STANDARDIZED IMPORTS ---
 from youtube_transcript_api import YouTubeTranscriptApi
@@ -21,19 +22,25 @@ def get_video_id(url):
     return match.group(1) if match else None
 
 def get_transcript(video_id):
-    """
-    ULTIMATE 2026 FETCH LOGIC:
-    Uses an instance and the cookie file provided by Render Secrets.
-    """
     try:
-        # Step A: Initialize the worker instance
-        ytt_api = YouTubeTranscriptApi()
+        # Step A: Manually load the cookies into a session
+        session = requests.Session()
         
-        # Step B: List transcripts using the cookie file path
-        # Note: Render provides this file via the "Secret Files" you set up.
-        transcript_list = ytt_api.list(video_id, cookies='youtube.com_cookies.txt')
+        # We manually check the cookie file from Render
+        if os.path.exists('youtube.com_cookies.txt'):
+            # This is the standard Netscape cookie loading logic
+            from http.cookiejar import MozillaCookieJar
+            cj = MozillaCookieJar('youtube.com_cookies.txt')
+            cj.load(ignore_discard=True, ignore_expires=True)
+            session.cookies = cj
         
-        # Step C: Priority Logic (English -> Hindi -> First Available)
+        # Step B: Initialize the API with this specific session
+        # In 2026, passing the session is the only way to use cookies
+        ytt_api = YouTubeTranscriptApi(http_client=session)
+        
+        # Step C: Now call list() without any arguments
+        transcript_list = ytt_api.list(video_id)
+        
         try:
             transcript = transcript_list.find_transcript(['en', 'hi'])
         except:
