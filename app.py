@@ -9,28 +9,31 @@ from google import genai
 from google.genai import types
 from fpdf import FPDF
 
-# 1. Configuration
+# 1. Setup & Configuration
 load_dotenv()
 api_key = os.getenv("GOOGLE_API_KEY")
-
-# Initialize Gemini Client (2026 SDK Style)
 client = genai.Client(api_key=api_key)
 
 # 2. Logic Functions
 def get_video_id(url):
-    """Extracts the 11-char ID from any YouTube URL format."""
     regex = r"(?:v=|\/)([0-9A-Za-z_-]{11}).*"
     match = re.search(regex, url)
     return match.group(1) if match else None
 
 def get_transcript(video_id):
+    """
+    ULTIMATE 2026 FETCH LOGIC:
+    Uses an instance and the cookie file provided by Render Secrets.
+    """
     try:
-        # ✅ The most reliable 2026 way:
-        # Use the class method directly and pass 'cookies' (plural) to the list call
-        # If 'cookies' is a string, it's treated as a file path.
+        # Step A: Initialize the worker instance
+        ytt_api = YouTubeTranscriptApi()
         
-        transcript_list = YouTubeTranscriptApi.list_transcripts(video_id, cookies='youtube.com_cookies.txt')
+        # Step B: List transcripts using the cookie file path
+        # Note: Render provides this file via the "Secret Files" you set up.
+        transcript_list = ytt_api.list(video_id, cookies='youtube.com_cookies.txt')
         
+        # Step C: Priority Logic (English -> Hindi -> First Available)
         try:
             transcript = transcript_list.find_transcript(['en', 'hi'])
         except:
@@ -42,75 +45,52 @@ def get_transcript(video_id):
     except Exception as e:
         st.error(f"Transcript Error: {e}")
         return None
-    
-    
+
 def generate_pdf(text):
-    """Simple PDF generator for the final report."""
     pdf = FPDF()
     pdf.add_page()
     pdf.set_font("Arial", size=12)
-    # Filter non-latin characters for the basic FPDF version
     clean_text = text.encode('latin-1', 'ignore').decode('latin-1')
     pdf.multi_cell(0, 10, txt=clean_text)
     return pdf.output(dest='S').encode('latin-1')
 
-# 3. Streamlit UI (Wide Layout)
-st.set_page_config(page_title="Universal AI Planner", page_icon="🌍", layout="wide")
+# 3. Streamlit Interface
+st.set_page_config(page_title="AI Video Planner", page_icon="🌍", layout="wide")
 
-# Sidebar for controls
 with st.sidebar:
-    st.title("⚙️ Project Settings")
-    user_goal = st.text_area("Custom Persona/Goal:", placeholder="e.g. Focus on the code, or summarize for a beginner...")
+    st.title("⚙️ Project Control")
+    user_goal = st.text_area("Your Focus:", placeholder="e.g., Only summarize the Python code...")
+    universal_mode = st.toggle("Translate to English", value=True)
     
-    # Universal Translation Feature
-    universal_mode = st.toggle("Universal Translation", value=True, help="Detects non-English transcripts and translates them instantly.")
-    
-    st.divider()
-    st.info("Stack: Python 3.13 + Gemini 3 + Streamlit")
+    # Debug Tool: Verify if Render see your cookies
+    if os.path.exists('youtube.com_cookies.txt'):
+        st.success("✅ Cookies Active")
+    else:
+        st.warning("⚠️ Cookies Missing (Check Render Environment)")
 
-# Main Content
 st.title("🌍 Universal YouTube Action Planner")
-st.markdown("Enter a link to any video—even if it's in **Hindi** or **Hinglish**—to get an English Action Plan.")
+video_url = st.text_input("YouTube URL:")
 
-video_url = st.text_input("YouTube URL:", placeholder="https://www.youtube.com/watch?v=...")
-
-if st.button("Generate My Action Plan"):
+if st.button("Generate Plan"):
     if video_url:
         v_id = get_video_id(video_url)
         if v_id:
-            with st.spinner("Step 1: Fetching Transcript..."):
+            with st.spinner("Extracting from YouTube..."):
                 raw_text = get_transcript(v_id)
             
             if raw_text:
-                with st.spinner("Step 2: AI Translation & Planning..."):
-                    # Define System Persona
-                    sys_instr = "You are a professional project manager. Use Markdown with bold headers and checklists."
-                    
+                with st.spinner("AI Planning in progress..."):
+                    # Dynamic Instruction
+                    sys_instr = "You are a professional project manager. Use Markdown headers."
                     if universal_mode:
-                        sys_instr += " IMPORTANT: The transcript might be in Hindi or Hinglish. Translate it to English before writing the plan."
+                        sys_instr += " Translate input to English if it is in Hindi/Hinglish."
 
-                    # Gemini 3 Model Call (Config contains System Instruction)
                     response = client.models.generate_content(
                         model="gemini-3-flash-preview",
-                        contents=f"User Goal: {user_goal if user_goal else 'Detailed Action Plan'}\n\nTranscript: {raw_text}",
-                        config=types.GenerateContentConfig(
-                            system_instruction=sys_instr
-                        )
+                        contents=f"Goal: {user_goal}\n\nTranscript: {raw_text}",
+                        config=types.GenerateContentConfig(system_instruction=sys_instr)
                     )
                     
-                    plan = response.text
-                    
-                # Display Results
-                st.success("Plan Generated Successfully!")
-                st.markdown("---")
-                st.markdown(plan)
-                
-                # PDF Download Button
-                st.download_button(
-                    label="📥 Download Action Plan (PDF)",
-                    data=generate_pdf(plan),
-                    file_name="Action_Plan.pdf",
-                    mime="application/pdf"
-                )
-        else:
-            st.error("Invalid link format. Please paste a full YouTube URL.")
+                    st.success("Plan Ready!")
+                    st.markdown(response.text)
+                    st.download_button("📥 Download PDF", data=generate_pdf(response.text), file_name="plan.pdf")
