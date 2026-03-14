@@ -24,29 +24,20 @@ def get_video_id(url):
     return match.group(1) if match else None
 
 def get_transcript(video_id):
-    """
-    MODERN 2026 LOGIC:
-    - Creates an instance of the API to avoid IP bans.
-    - Uses .list() which replaced .list_transcripts().
-    - Grabs English or Hindi as fallback.
-    """
     try:
-        # Create the worker instance
+        # Initialize the API
         ytt_api = YouTubeTranscriptApi()
         
-        # Call the new .list() method
-        transcript_list = ytt_api.list(video_id)
+        # Point to the secret file created on Render
+        # On Render, it will be in the root directory
+        transcript_list = ytt_api.list(video_id, cookies='youtube.com_cookies.txt')
         
-        # Attempt to find Hindi or English
         try:
             transcript = transcript_list.find_transcript(['en', 'hi'])
         except:
-            # Absolute fallback: Get the first one available (Spanish, French, etc.)
             transcript = next(iter(transcript_list))
             
         data = transcript.fetch()
-        
-        # Combine snippets using the 'text' attribute
         return " ".join([snippet.text for snippet in data])
         
     except Exception as e:
