@@ -25,11 +25,11 @@ def get_video_id(url):
 
 def get_transcript(video_id):
     try:
-        # ✅ CORRECT: Pass the cookie path during initialization
-        ytt_api = YouTubeTranscriptApi(cookie_path='youtube.com_cookies.txt')
+        # ✅ The most reliable 2026 way:
+        # Use the class method directly and pass 'cookies' (plural) to the list call
+        # If 'cookies' is a string, it's treated as a file path.
         
-        # Now list() will automatically use those cookies
-        transcript_list = ytt_api.list(video_id)
+        transcript_list = YouTubeTranscriptApi.list_transcripts(video_id, cookies='youtube.com_cookies.txt')
         
         try:
             transcript = transcript_list.find_transcript(['en', 'hi'])
@@ -42,7 +42,8 @@ def get_transcript(video_id):
     except Exception as e:
         st.error(f"Transcript Error: {e}")
         return None
-
+    
+    
 def generate_pdf(text):
     """Simple PDF generator for the final report."""
     pdf = FPDF()
