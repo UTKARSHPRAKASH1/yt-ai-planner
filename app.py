@@ -1,14 +1,13 @@
 import streamlit as st
 import os
 import re
-from dotenv import load_dotenv
-import requests
-
-# --- 2026 STANDARDIZED IMPORTS ---
+import requests # NEW
+from http.cookiejar import MozillaCookieJar # NEW
 from youtube_transcript_api import YouTubeTranscriptApi
 from google import genai
 from google.genai import types
 from fpdf import FPDF
+from dotenv import load_dotenv
 
 # 1. Setup & Configuration
 load_dotenv()
@@ -23,22 +22,20 @@ def get_video_id(url):
 
 def get_transcript(video_id):
     try:
-        # Step A: Manually load the cookies into a session
+        # Step A: Create an authenticated session
         session = requests.Session()
         
-        # We manually check the cookie file from Render
+        # Check if the secret cookie file exists (uploaded via Render Secrets)
         if os.path.exists('youtube.com_cookies.txt'):
-            # This is the standard Netscape cookie loading logic
-            from http.cookiejar import MozillaCookieJar
             cj = MozillaCookieJar('youtube.com_cookies.txt')
             cj.load(ignore_discard=True, ignore_expires=True)
             session.cookies = cj
         
-        # Step B: Initialize the API with this specific session
-        # In 2026, passing the session is the only way to use cookies
+        # Step B: Initialize the API with the custom session
+        # This attaches your "human" cookies to every request
         ytt_api = YouTubeTranscriptApi(http_client=session)
         
-        # Step C: Now call list() without any arguments
+        # Step C: List and Fetch
         transcript_list = ytt_api.list(video_id)
         
         try:
