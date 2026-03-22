@@ -3,7 +3,6 @@ import os
 import re
 from dotenv import load_dotenv
 
-# --- 2026 STANDARDIZED IMPORTS ---
 from youtube_transcript_api import YouTubeTranscriptApi
 from google import genai
 from google.genai import types
@@ -24,29 +23,24 @@ def get_video_id(url):
     return match.group(1) if match else None
 
 def get_transcript(video_id):
-    """
-    MODERN 2026 LOGIC:
-    - Creates an instance of the API to avoid IP bans.
-    - Uses .list() which replaced .list_transcripts().
-    - Grabs English or Hindi as fallback.
-    """
+    
     try:
-        # Create the worker instance
+        
         ytt_api = YouTubeTranscriptApi()
         
-        # Call the new .list() method
+       
         transcript_list = ytt_api.list(video_id)
         
         # Attempt to find Hindi or English
         try:
             transcript = transcript_list.find_transcript(['en', 'hi'])
         except:
-            # Absolute fallback: Get the first one available (Spanish, French, etc.)
+            
             transcript = next(iter(transcript_list))
             
         data = transcript.fetch()
         
-        # Combine snippets using the 'text' attribute
+        
         return " ".join([snippet.text for snippet in data])
         
     except Exception as e:
@@ -64,7 +58,7 @@ def generate_pdf(text):
     return pdf.output(dest='S').encode('latin-1')
 
 # 3. Streamlit UI (Wide Layout)
-st.set_page_config(page_title="Universal AI Planner", page_icon="🌍", layout="wide")
+st.set_page_config(page_title="Youtube Personal Project Manager", page_icon="🌍", layout="wide")
 
 # Sidebar for controls
 with st.sidebar:
@@ -78,7 +72,7 @@ with st.sidebar:
     st.info("Stack: Python 3.13 + Gemini 3 + Streamlit")
 
 # Main Content
-st.title("🌍 Universal YouTube Action Planner")
+st.title("🌍 Youtube Personal Project Manager")
 st.markdown("Enter a link to any video—even if it's in **Hindi** or **Hinglish**—to get an English Action Plan.")
 
 video_url = st.text_input("YouTube URL:", placeholder="https://www.youtube.com/watch?v=...")
