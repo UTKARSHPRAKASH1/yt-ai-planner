@@ -2,17 +2,12 @@ import streamlit as st
 import os
 import re
 import requests
-from http.cookiejar import MozillaCookieJar
 from youtube_transcript_api import YouTubeTranscriptApi
 from google import genai
 from google.genai import types
 from fpdf import FPDF
 
-# --- 1. BOOTSTRAP: RECREATE COOKIE FILE FROM SECRETS ---
-# This bypasses the YouTube IP block on Streamlit Cloud
-if "COOKIE_DATA" in st.secrets:
-    with open("youtube.com_cookies.txt", "w") as f:
-        f.write(st.secrets["COOKIE_DATA"])
+
 
 # --- 2. CONFIGURATION & CLIENT SETUP ---
 # Fetch API Key from Streamlit Secrets (Settings > Secrets)
@@ -27,34 +22,41 @@ def get_video_id(url):
     match = re.search(regex, url)
     return match.group(1) if match else None
 
+import requests
+
 def get_transcript(video_id):
     """
-    Fetches transcript using a session-based authenticated approach.
-    Uses the recreated cookie file to bypass data-center IP blocks.
+    PROFESSIONAL FIX: Uses Supadata API to bypass YouTube IP blocking.
+    This service handles all proxies and anti-bot measures internally.
     """
     try:
-        session = requests.Session()
+        # 1. Retrieve the Supadata API Key from Streamlit Secrets
+        supadata_key = st.secrets.get("SUPADATA_API_KEY")
         
-        # Load cookies into the session if file exists
-        if os.path.exists('youtube.com_cookies.txt'):
-            cj = MozillaCookieJar('youtube.com_cookies.txt')
-            cj.load(ignore_discard=True, ignore_expires=True)
-            session.cookies = cj
+        if not supadata_key:
+            st.error("Missing SUPADATA_API_KEY in Streamlit Secrets.")
+            return None
+
+        # 2. Call the Supadata endpoint
+        url = "https://api.supadata.ai/v1/youtube/transcript"
+        params = {"videoId": video_id}
+        headers = {"x-api-key": supadata_key}
         
-        # Initialize API with the authenticated session
-        ytt_api = YouTubeTranscriptApi(http_client=session)
+        response = requests.get(url, params=params, headers=headers)
         
-        # Retrieve the transcript list
-        transcript_list = ytt_api.list(video_id)
-        
-        # Priority: English -> Hindi -> First available
-        try:
-            transcript = transcript_list.find_transcript(['en', 'hi'])
-        except:
-            transcript = next(iter(transcript_list))
+        # 3. Handle the response
+        if response.status_code == 200:
+            data = response.json()
+            # Supadata returns a list of segments: [{'text': '...', 'start': 0}, ...]
+            transcript_segments = data.get("content", [])
+            return " ".join([seg["text"] for seg in transcript_segments])
+        else:
+            st.error(f"Supadata Error {response.status_code}: {response.text}")
+            return None
             
-        data = transcript.fetch()
-        return " ".join([snippet['text'] for snippet in data])
+    except Exception as e:
+        st.error(f"Transcript Retrieval Failed: {e}")
+        return None
         
     except Exception as e:
         st.error(f"Transcript Error: {e}")
