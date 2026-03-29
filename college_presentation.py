@@ -60,14 +60,17 @@ def generate_pdf(text):
 # 3. Streamlit UI (Wide Layout)
 st.set_page_config(page_title="Youtube Personal Project Manager", page_icon="🌍", layout="wide")
 
-# Sidebar for controls
+# Sidebar Controls
+    
 with st.sidebar:
-    st.title("⚙️ Project Settings")
-    user_goal = st.text_area("Custom Persona/Goal:", placeholder="e.g. Focus on the code, or summarize for a beginner...")
-    
-    # Universal Translation Feature
+    st.title("⚙️ Project Control & Settings")
     universal_mode = st.toggle("Universal Translation", value=True, help="Detects non-English transcripts and translates them instantly.")
-    
+    # New Language Selector
+    output_lang = st.selectbox(
+        "Select Output Language:",
+        ["English", "Hindi", "Spanish", "French", "German", "Bengali"]
+    )
+    user_goal = st.text_area("Your Focus:", placeholder="e.g., Only summarize the Python code...")
     st.divider()
     st.info("Stack: Python 3.13 + Gemini 3 + Streamlit")
 
@@ -87,10 +90,11 @@ if st.button("Generate My Action Plan"):
             if raw_text:
                 with st.spinner("Step 2: AI Translation & Planning..."):
                     # Define System Persona
-                    sys_instr = "You are a professional project manager. Use Markdown with bold headers and checklists."
-                    
+                    # Updated instruction logic
+                    sys_instr = f"You are a professional project manager. Write the entire response in {output_lang}."
+
                     if universal_mode:
-                        sys_instr += " IMPORTANT: The transcript might be in Hindi or Hinglish. Translate it to English before writing the plan."
+                        sys_instr += " The input might be in Hindi/Hinglish; translate it accurately into the output language."
 
                     # Gemini 3 Model Call (Config contains System Instruction)
                     response = client.models.generate_content(
