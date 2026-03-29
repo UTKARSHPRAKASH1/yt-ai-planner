@@ -10,9 +10,9 @@ from fpdf import FPDF
 
 # --- 1. BOOTSTRAP: RECREATE COOKIE FILE FROM SECRETS ---
 # This bypasses the YouTube IP block on Streamlit Cloud
-#if "COOKIE_DATA" in st.secrets:
-#    with open("youtube.com_cookies.txt", "w") as f:
-#        f.write(st.secrets["COOKIE_DATA"])
+if "COOKIE_DATA" in st.secrets:
+    with open("youtube.com_cookies.txt", "w") as f:
+        f.write(st.secrets["COOKIE_DATA"])
 
 # --- 2. CONFIGURATION & CLIENT SETUP ---
 # Fetch API Key from Streamlit Secrets (Settings > Secrets)
