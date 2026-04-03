@@ -95,11 +95,7 @@ with st.sidebar:
     
     st.divider()
     
-    # Debug Status for Mentor Review
-    if os.path.exists('youtube.com_cookies.txt'):
-        st.success("✅ Auth Session Active")
-    else:
-        st.warning("⚠️ Using Public Session (IP Block Risk)")
+    
 
 # Main Interface
 st.title("YouTube Personal Project Manager using AI ")
