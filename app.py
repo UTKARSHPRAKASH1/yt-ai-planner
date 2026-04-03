@@ -102,7 +102,7 @@ with st.sidebar:
         st.warning("⚠️ Using Public Session (IP Block Risk)")
 
 # Main Interface
-st.title("🌍 Universal AI-Driven Video Action Planner")
+st.title("YouTube Personal Project Manager using AI ")
 st.write("Convert any YouTube tutorial into a structured, multilingual action plan.")
 
 video_url = st.text_input("Enter YouTube Video URL:", placeholder="https://www.youtube.com/watch?v=...")
