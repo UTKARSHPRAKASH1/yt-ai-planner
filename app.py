@@ -141,12 +141,35 @@ if st.button("Generate Action Plan"):
                     
                     # Step 3: Display & Download
                     st.success("🎯 Your Plan is Ready!")
-                    st.markdown(response.text)
                     
-                    pdf_bytes = generate_pdf(response.text)
-                    st.download_button(
-                        label="📥 Download Plan as PDF",
-                        data=pdf_bytes,
-                        file_name="Action_Plan.pdf",
-                        mime="application/pdf"
-                    )
+                    plan_text = response.text # Store response in a variable
+                    st.markdown(plan_text)
+                    
+                    st.divider()
+                    st.subheader("📥 Export Your Plan")
+                    
+                    # Create two columns for the buttons
+                    col1, col2 = st.columns(2)
+                    
+                    with col1:
+                        # --- PDF Download ---
+                        pdf_bytes = generate_pdf(plan_text)
+                        st.download_button(
+                            label="📄 Download as PDF",
+                            data=pdf_bytes,
+                            file_name="Action_Plan.pdf",
+                            mime="application/pdf",
+                            use_container_width=True
+                        )
+                    
+                    with col2:
+                        # --- Markdown Download ---
+                        # Convert string to bytes for the download button
+                        md_bytes = plan_text.encode('utf-8')
+                        st.download_button(
+                            label="📝 Download as Markdown (.md)",
+                            data=md_bytes,
+                            file_name="Action_Plan.md",
+                            mime="text/markdown",
+                            use_container_width=True
+                        )
