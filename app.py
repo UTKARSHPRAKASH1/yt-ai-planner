@@ -128,7 +128,7 @@ if st.button("Generate Action Plan"):
                         f"and create a professional, chronological action plan. "
                         f"IMPORTANT: Write the entire response in {target_lang}. "
                         f"If the transcript is in Hinglish or Hindi, translate it accurately to {target_lang}. "
-                        f"Use Markdown headers, bullet points, and bold text for clarity."
+                        f"Use bullet points, and different font sizes for clarity."
                     )
                     
                     user_prompt = f"User Goal: {user_goal}\n\nTranscript: {raw_transcript}"
