@@ -128,8 +128,9 @@ if st.button("Generate Plan") or task_type:
                         
                         sys_prompt = f"Professional Senior Project Manager. Write in {target_lang}. Task: {final_instr}. {cat_tag}"
                         
+                        # Change the model parameter to this:
                         response = client.models.generate_content(
-                            model="gemini-3-flash-preview",
+                            model="gemini-2.0-flash", 
                             contents=f"Goal: {user_goal}\n\nTranscript: {chunk}",
                             config=types.GenerateContentConfig(system_instruction=sys_prompt)
                         )
