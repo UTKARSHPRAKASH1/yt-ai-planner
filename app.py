@@ -55,14 +55,28 @@ def get_transcript(video_id):
         return None
 
 def generate_pdf(text):
-    """Generates a downloadable PDF of the generated plan."""
-    pdf = FPDF()
-    pdf.add_page()
-    pdf.set_font("Arial", size=12)
-    # Ensure text is compatible with Latin-1 encoding
-    clean_text = text.encode('latin-1', 'ignore').decode('latin-1')
-    pdf.multi_cell(0, 10, txt=clean_text)
-    return pdf.output(dest='S').encode('latin-1')
+    """Generates a downloadable PDF with character sanitization."""
+    try:
+        pdf = FPDF()
+        pdf.add_page()
+        pdf.set_font("Arial", size=12)
+        
+        # CLEANING STEP: Replace common problematic characters
+        clean_text = text.replace('–', '-').replace('—', '-').replace('•', '*')
+        clean_text = clean_text.replace('“', '"').replace('”', '"').replace('‘', "'").replace('’', "'")
+        
+        # Encode to Latin-1 and ignore what we can't translate to stay safe
+        final_text = clean_text.encode('latin-1', 'ignore').decode('latin-1')
+        
+        pdf.multi_cell(0, 10, txt=final_text)
+        return pdf.output(dest='S').encode('latin-1')
+    except Exception as e:
+        # Fallback to very basic text if it fails
+        pdf = FPDF()
+        pdf.add_page()
+        pdf.set_font("Arial", size=12)
+        pdf.multi_cell(0, 10, txt="Error generating full PDF. Please use the Markdown export.")
+        return pdf.output(dest='S').encode('latin-1')
 
 # --- 4. STREAMLIT UI DESIGN ---
 
@@ -158,19 +172,23 @@ if st.button("Generate Action Plan") or task_type:
                     # Create two columns for the buttons
                     col1, col2 = st.columns(2)
                     
+                    # --- Update the Download Buttons in Section 5 ---
                     with col1:
-                        # --- PDF Download ---
-                        pdf_bytes = generate_pdf(plan_text)
-                        st.download_button(
-                            label="📄 Download as PDF",
-                            data=pdf_bytes,
-                            file_name=f"{active_label}.pdf",
-                            mime="application/pdf",
-                            use_container_width=True
-                        )
-                    
+                        # Generate the PDF inside the button logic
+                        try:
+                            pdf_bytes = generate_pdf(plan_text)
+                            st.download_button(
+                                label="📄 Download as PDF",
+                                data=pdf_bytes,
+                                file_name=f"{active_label}.pdf",
+                                mime="application/pdf",
+                                use_container_width=True
+                            )
+                        except:
+                            st.error("PDF generation failed. Use Markdown for now.")
+
                     with col2:
-                        # --- Markdown Download ---
+                        # Ensure UTF-8 encoding for the Markdown file
                         md_bytes = plan_text.encode('utf-8')
                         st.download_button(
                             label="📝 Download as Markdown (.md)",
