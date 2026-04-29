@@ -112,54 +112,7 @@ video_url = st.text_input(
 
 main_gen_btn = st.button("Generate Full Action Plan", use_container_width=True)
 
-# --- 4. AI-DRIVEN KNOWLEDGE BASE ---
-def get_recommendations(category_label):
-    """Maps AI-detected categories to specific books and search queries."""
-    domains = {
-        "Data Structures": {
-            "books": ["*Data Structures & Algorithms Made Easy* (Narasimha Karumanchi)", "*Fundamentals of Data Structure* (Sahni)"],
-            "query": "Latest breakthroughs in Data Structures 2026"
-        },
-        "Algorithms": {
-            "books": ["*Introduction to Algorithms* (CLRS)", "*Algorithm Design* (Kleinberg & Tardos)"],
-            "query": "Advanced algorithmic research news 2026"
-        },
-        "Operating Systems": {
-            "books": ["*Operating System Concepts* (Galvin)", "*Modern Operating Systems* (Tanenbaum)"],
-            "query": "OS kernel developments and virtualization 2026"
-        },
-        "Computer Networks": {
-            "books": ["*Computer Networking: A Top-Down Approach* (Kurose)", "*Data Communications* (Forouzan)"],
-            "query": "Networking protocols and 6G news 2026"
-        },
-        "Databases": {
-            "books": ["*Database System Concepts* (Korth)", "*Fundamentals of Database Systems* (Navathe)"],
-            "query": "Distributed databases and NoSQL trends 2026"
-        },
-        "Python Programming": {
-            "books": ["*Fluent Python* (Luciano Ramalho)", "*Automate the Boring Stuff* (Al Sweigart)"],
-            "query": "Python language updates and PEP news 2026"
-        },
-        "Web Development": {
-            "books": ["*Django for Beginners* (William Vincent)", "*Two Scoops of Django* (Feldroy)"],
-            "query": "Web development frameworks and Django news 2026"
-        },
-        "Machine Learning & AI": {
-            "books": ["*Hands-On Machine Learning* (Geron)", "*Artificial Intelligence: A Modern Approach* (Russell)"],
-            "query": "Generative AI and Large Language Models news 2026"
-        },
-        "Cybersecurity": {
-            "books": ["*The Web Application Hacker's Handbook*", "*Cryptography and Network Security* (Stallings)"],
-            "query": "Cybersecurity threats and encryption news 2026"
-        }
-    }
-    
-    label = category_label.strip()
-    if label in domains:
-        return domains[label]["books"], domains[label]["query"]
-    return ["Not in the keywords"], None
-
-# --- 5. EXECUTION LOGIC (WITH AI CATEGORIZATION) ---
+# --- 4. EXECUTION LOGIC (WITH CHUNKING) ---
 final_instruction = None
 active_mode = ""
 
@@ -187,82 +140,62 @@ if final_instruction:
                 raw_text = get_transcript(v_id)
             
             if raw_text:
+                # --- NEW: CHUNKING & COMBINING LOGIC ---
+                # We split the text into chunks of 30,000 characters (~40 mins of video)
                 chunk_size = 30000 
                 chunks = [raw_text[i:i + chunk_size] for i in range(0, len(raw_text), chunk_size)]
-                combined_output = []
-                detected_category = "None"
                 
+                combined_output = []
+                
+                # We only process up to 3 chunks to stay within Free Tier daily limits 
+                # but cover up to 2 hours of video.
                 for idx, chunk in enumerate(chunks[:3]):
-                    with st.spinner(f"Step 2: Processing Part {idx+1}..."):
-                        # Added categorization instruction to the first chunk
-                        cat_instr = ""
-                        if idx == 0:
-                            cat_instr = (
-                                "\n\nCRITICAL: At the end of your response, identify the subject category "
-                                "from this list: [Data Structures, Algorithms, Operating Systems, Computer Networks, "
-                                "Databases, Python Programming, Web Development, Machine Learning & AI, Cybersecurity]. "
-                                "Format exactly as: CATEGORY: <Label>"
-                            )
-
+                    with st.spinner(f"Step 2: Processing Part {idx+1} of {len(chunks[:3])}..."):
                         sys_instr = (
                             f"Professional project manager. Write ONLY in {output_lang}. "
-                            f"Task: {final_instruction}. Use bold headers.{cat_instr}"
+                            f"Task: {final_instruction}. Use bold headers."
                         )
-                        
+                        if universal_mode:
+                            sys_instr += " Translate from Hindi/Hinglish if needed."
+
                         try:
+                            # Using 1.5-flash for the highest TPM limit
                             response = client.models.generate_content(
                                 model="gemini-3-flash-preview",
                                 contents=f"Goal: {user_goal}\n\nTranscript Part {idx+1}: {chunk}",
                                 config=types.GenerateContentConfig(system_instruction=sys_instr)
                             )
+                            combined_output.append(response.text)
                             
-                            chunk_text = response.text
-                            # Extract Category Label if present
-                            if "CATEGORY:" in chunk_text:
-                                parts = chunk_text.split("CATEGORY:")
-                                combined_output.append(parts[0])
-                                detected_category = parts[1].strip().split('\n')[0]
-                            else:
-                                combined_output.append(chunk_text)
-
+                            # Small delay to avoid 'Requests Per Minute' (RPM) limit
                             if len(chunks) > 1:
                                 time.sleep(2) 
+                                
                         except Exception as e:
-                            st.error(f"AI Error: {e}")
-                            break 
+                            st.error(f"AI Error on Part {idx+1}: {e}")
+                            break # Stop if we hit a hard limit
 
                 if combined_output:
                     plan = "\n\n---\n\n".join(combined_output)
-                    
-                    # FETCH DYNAMIC INFO USING AI DETECTED CATEGORY
-                    books, news_query = get_recommendations(detected_category)
-                    
                     st.success(f"🎯 {active_mode} Ready!")
                     st.markdown("---")
-                    
-                    col_left, col_right = st.columns([0.7, 0.3])
-                    
-                    with col_left:
-                        st.markdown(plan)
-                        ecol1, ecol2 = st.columns(2)
-                        with ecol1:
-                            st.download_button("📥 Download PDF", generate_pdf(plan), f"{active_mode}.pdf")
-                        with ecol2:
-                            st.download_button("📝 Download Markdown", plan, f"{active_mode}.md")
+                    st.markdown(plan)
 
-                    with col_right:
-                        st.subheader("📚 Recommended Books")
-                        if books[0] == "Not in the keywords":
-                            st.warning("⚠️ Not in the keywords")
-                        else:
-                            st.success(f"Detected: {detected_category}")
-                            for b in books:
-                                st.info(b)
-                        
-                        st.divider()
-                        st.subheader("📰 Recent News")
-                        if news_query:
-                            search_url = f"https://www.google.com/search?q={news_query.replace(' ', '+')}"
-                            st.link_button(f"🚀 {detected_category} News 2026", search_url)
-                        else:
-                            st.write("No specific news category detected.")
+                    # Export Buttons
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        st.download_button(
+                            label="📥 Download PDF",
+                            data=generate_pdf(plan),
+                            file_name=f"{active_mode}.pdf",
+                            mime="application/pdf"
+                        )
+                    with col2:
+                        st.download_button(
+                            label="📝 Download Markdown",
+                            data=plan,
+                            file_name=f"{active_mode}.md",
+                            mime="text/markdown"
+                        )
+        else:
+            st.error("Invalid YouTube URL format.")
