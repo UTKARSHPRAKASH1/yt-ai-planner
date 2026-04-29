@@ -88,6 +88,10 @@ with st.sidebar:
     with col2:
         if st.button("📝 Quiz", use_container_width=True): task_type = "Quiz"
         if st.button("📋 Summary", use_container_width=True): task_type = "Summary"
+    
+    # Question Bank button spans both columns for visibility
+    if st.button("📂 Question Bank", use_container_width=True):
+        task_type = "Question Bank"
 
 # Main Interface
 st.title("YouTube Personal Project Manager using AI ")
@@ -106,6 +110,7 @@ if st.button("Generate Action Plan") or task_type:
             "Quiz": "Create a 5-question multiple choice quiz with an answer key.",
             "Notes": "Create comprehensive, structured study notes with key definitions and bullet points.",
             "Summary": "Create a concise, high-level executive summary in 5-8 bullet points.",
+            "Question Bank": "Generate a comprehensive Question Bank consisting of Short (2 marks), Medium (5 marks), and Long (10 marks) answer questions based on the video content.",
             None: "create a professional, chronological action plan."
         }
         
@@ -125,7 +130,7 @@ if st.button("Generate Action Plan") or task_type:
                         f"You are a Senior Project Manager and Academic Expert. Your task is to analyze the transcript and {final_instruction} "
                         f"IMPORTANT: Write the entire response in {target_lang}. "
                         f"If the transcript is in Hinglish or Hindi, translate it accurately. "
-                        f"Use clear formatting."
+                        f"Use clear formatting and headers for different question categories."
                     )
                     
                     user_prompt = f"User Goal: {user_goal}\n\nTranscript: {raw_transcript}"
