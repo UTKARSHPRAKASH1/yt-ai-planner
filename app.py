@@ -7,8 +7,6 @@ from google import genai
 from google.genai import types
 from fpdf import FPDF
 
-
-
 # --- 2. CONFIGURATION & CLIENT SETUP ---
 # Fetch API Key from Streamlit Secrets (Settings > Secrets)
 api_key = st.secrets.get("GOOGLE_API_KEY")
@@ -21,8 +19,6 @@ def get_video_id(url):
     regex = r"(?:v=|\/)([0-9A-Za-z_-]{11}).*"
     match = re.search(regex, url)
     return match.group(1) if match else None
-
-import requests
 
 def get_transcript(video_id):
     """
@@ -57,10 +53,6 @@ def get_transcript(video_id):
     except Exception as e:
         st.error(f"Transcript Retrieval Failed: {e}")
         return None
-        
-    except Exception as e:
-        st.error(f"Transcript Error: {e}")
-        return None
 
 def generate_pdf(text):
     """Generates a downloadable PDF of the generated plan."""
@@ -94,8 +86,15 @@ with st.sidebar:
     )
     
     st.divider()
+    st.subheader("⚡ Quick Actions")
     
+    # Task selection buttons
+    task_type = None
+    if st.button("🎴 Generate Flashcards", use_container_width=True):
+        task_type = "Flashcards"
     
+    if st.button("📝 Generate Quiz", use_container_width=True):
+        task_type = "Quiz"
 
 # Main Interface
 st.title("YouTube Personal Project Manager using AI ")
@@ -103,25 +102,37 @@ st.write("Convert any YouTube tutorial into a structured, multilingual action pl
 
 video_url = st.text_input("Enter YouTube Video URL:", placeholder="https://www.youtube.com/watch?v=...")
 
-if st.button("Generate Action Plan"):
+# Logic to trigger processing
+if st.button("Generate Action Plan") or task_type:
     if not video_url:
         st.warning("Please enter a valid URL.")
     else:
+        # Determine the specific instruction based on the button clicked
+        if task_type == "Flashcards":
+            final_instruction = "Create a set of 5-10 clear Flashcard-style Q&A pairs."
+            active_label = "Flashcards"
+        elif task_type == "Quiz":
+            final_instruction = "Create a 5-question multiple choice quiz with an answer key."
+            active_label = "Quiz"
+        else:
+            final_instruction = "create a professional, chronological action plan."
+            active_label = "Action Plan"
+
         v_id = get_video_id(video_url)
         if not v_id:
             st.error("Invalid YouTube URL format.")
         else:
             # Step 1: Extraction
-            with st.spinner("🔍 Extracting intelligence from YouTube..."):
+            with st.spinner(f"🔍 Extracting intelligence for {active_label}..."):
                 raw_transcript = get_transcript(v_id)
             
             if raw_transcript:
                 # Step 2: AI Processing
-                with st.spinner(f"🧠 Synthesizing Action Plan in {target_lang}..."):
+                with st.spinner(f"🧠 Synthesizing {active_label} in {target_lang}..."):
                     # Dynamic System Instruction
                     sys_prompt = (
-                        f"You are a Senior Project Manager. Your task is to analyze the provided video transcript "
-                        f"and create a professional, chronological action plan. "
+                        f"You are a Senior Project Manager and Academic Expert. Your task is to analyze the provided video transcript "
+                        f"and {final_instruction} "
                         f"IMPORTANT: Write the entire response in {target_lang}. "
                         f"If the transcript is in Hinglish or Hindi, translate it accurately to {target_lang}. "
                         f"Use bullet points, and different font sizes for clarity."
@@ -136,13 +147,13 @@ if st.button("Generate Action Plan"):
                     )
                     
                     # Step 3: Display & Download
-                    st.success("🎯 Your Plan is Ready!")
+                    st.success(f"🎯 Your {active_label} is Ready!")
                     
                     plan_text = response.text # Store response in a variable
                     st.markdown(plan_text)
                     
                     st.divider()
-                    st.subheader("📥 Export Your Plan")
+                    st.subheader(f"📥 Export Your {active_label}")
                     
                     # Create two columns for the buttons
                     col1, col2 = st.columns(2)
@@ -153,19 +164,18 @@ if st.button("Generate Action Plan"):
                         st.download_button(
                             label="📄 Download as PDF",
                             data=pdf_bytes,
-                            file_name="Action_Plan.pdf",
+                            file_name=f"{active_label}.pdf",
                             mime="application/pdf",
                             use_container_width=True
                         )
                     
                     with col2:
                         # --- Markdown Download ---
-                        # Convert string to bytes for the download button
                         md_bytes = plan_text.encode('utf-8')
                         st.download_button(
                             label="📝 Download as Markdown (.md)",
                             data=md_bytes,
-                            file_name="Action_Plan.md",
+                            file_name=f"{active_label}.md",
                             mime="text/markdown",
                             use_container_width=True
                         )
